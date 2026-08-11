@@ -1,9 +1,9 @@
+
 import express from 'express'
 import puppeteer from 'puppeteer-core'
-import chromium from 'chrome-aws-lambda'
+import chromium from '@sparticuz/chromium'
 import { fileURLToPath } from 'url'
 import path from 'path'
-import crypto from 'crypto'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -17,7 +17,6 @@ let browserInstance = null
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 ]
@@ -30,12 +29,17 @@ async function getBrowser() {
   if (browserInstance) return browserInstance
 
   const isDev = process.env.NODE_ENV !== 'production'
-  const executablePath = isDev
-    ? '/usr/bin/google-chrome'
-    : await chromium.executablePath
+  
+  let executablePath
+  if (isDev) {
+    executablePath = '/usr/bin/google-chrome'
+  } else {
+    executablePath = await chromium.executablePath()
+  }
 
   browserInstance = await puppeteer.launch({
     args: [
+      ...chromium.args,
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
@@ -50,9 +54,7 @@ async function getBrowser() {
       '--disable-ipc-flooding-protection',
       '--disable-back-forward-cache',
       '--disable-features=SharedArrayBuffer',
-      '--disable-features=OutOfBlinkCors',
       '--disable-site-isolation-trials',
-      '--disable-optimize-bytes',
       '--disable-accelerated-2d-canvas',
       '--disable-accelerated-jpeg-decoding',
       '--disable-accelerated-mjpeg-decode',
@@ -278,8 +280,6 @@ async function bypassCloudflare(url, options = {}) {
     returnHtml = true,
     returnCookies = true,
     solveTurnstile = true,
-    useProxy = false,
-    customHeaders = {},
     customUserAgent = null,
     viewport = { width: 1920, height: 1080 }
   } = options
@@ -296,10 +296,6 @@ async function bypassCloudflare(url, options = {}) {
 
     if (viewport) {
       await page.setViewport(viewport)
-    }
-
-    if (Object.keys(customHeaders).length > 0) {
-      await page.setExtraHTTPHeaders(customHeaders)
     }
 
     let turnstileToken = null
