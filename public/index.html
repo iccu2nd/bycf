@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloudflare Turnstile Bypass</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #14141a;
+      border-radius: 16px;
+      padding: 30px;
+      border: 1px solid #2a2a35;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid #222;
+      padding-bottom: 14px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #aaa;
+      margin-bottom: 5px;
+    }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid #2a2a35;
+      background: #1a1a24;
+      color: #e0e0e0;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .form-group input:focus, .form-group textarea:focus {
+      border-color: #6c5ce7;
+    }
+    .form-group textarea {
+      min-height: 80px;
+      font-family: monospace;
+      font-size: 13px;
+      resize: vertical;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 10px 0;
+    }
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #aaa;
+      cursor: pointer;
+    }
+    .checkbox-group input[type="checkbox"] {
+      accent-color: #6c5ce7;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+    .btn {
+      padding: 14px 32px;
+      border-radius: 10px;
+      border: none;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #6c5ce7;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #5a4bd1;
+      transform: scale(1.02);
+    }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-secondary {
+      background: #1a1a24;
+      border: 1px solid #2a2a35;
+      color: #aaa;
+    }
+    .btn-secondary:hover {
+      background: #2a2a35;
+      color: #fff;
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .result-box {
+      margin-top: 20px;
+      background: #0d0d14;
+      border-radius: 10px;
+      border: 1px solid #1e1e2a;
+      padding: 16px;
+      max-height: 600px;
+      overflow: auto;
+      display: none;
+    }
+    .result-box.active {
+      display: block;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .status-badge.success {
+      background: #00b89420;
+      color: #00b894;
+      border: 1px solid #00b89440;
+    }
+    .status-badge.failed {
+      background: #ff6b6b20;
+      color: #ff6b6b;
+      border: 1px solid #ff6b6b40;
+    }
+    .status-badge.pending {
+      background: #fdcb6e20;
+      color: #fdcb6e;
+      border: 1px solid #fdcb6e40;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px 16px;
+      font-size: 13px;
+      margin: 8px 0 12px 0;
+    }
+    .info-grid .label {
+      color: #666;
+      font-weight: 500;
+    }
+    .info-grid .value {
+      color: #ccc;
+      word-break: break-all;
+    }
+    .response-preview {
+      background: #0a0a10;
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 300px;
+      overflow: auto;
+      font-size: 12px;
+      color: #8a8a9a;
+      border: 1px solid #1a1a24;
+      margin-top: 8px;
+    }
+    .response-preview pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 0;
+    }
+    .response-preview img {
+      max-width: 100%;
+      border-radius: 8px;
+      border: 1px solid #2a2a35;
+    }
+    .copy-btn {
+      background: #1a1a24;
+      border: 1px solid #2a2a35;
+      color: #aaa;
+      padding: 3px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+    .copy-btn:hover {
+      background: #2a2a35;
+      color: #fff;
+    }
+    .endpoint-info {
+      background: #111118;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 16px;
+      border: 1px solid #1e1e2a;
+      font-size: 13px;
+    }
+    .endpoint-info code {
+      background: #1a1a24;
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: #6c5ce7;
+      font-size: 12px;
+    }
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #2a2a35;
+      border-top: 2px solid #6c5ce7;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      color: #444;
+      font-size: 12px;
+      border-top: 1px solid #1a1a24;
+      padding-top: 16px;
+    }
+    .footer a {
+      color: #6c5ce7;
+      text-decoration: none;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0a10;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2a2a35;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3a3a45;
+    }
+    @media (max-width: 640px) {
+      .container { padding: 16px; }
+      .form-row { grid-template-columns: 1fr; }
+      .checkbox-group { flex-direction: column; gap: 8px; }
+      .btn { width: 100%; justify-content: center; }
+      .info-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Cloudflare Turnstile Bypass</h1>
+  <div class="subtitle">Full bypass with puppeteer - deploy on Vercel</div>
+
+  <div class="form-group">
+    <label>Target URL</label>
+    <input type="text" id="targetUrl" placeholder="https://example.com" value="https://nftools.aroshi.my.id/nftoken">
+  </div>
+
+  <div class="form-group">
+    <label>Site Key (Turnstile)</label>
+    <input type="text" id="siteKey" placeholder="0x4AAAAAAA0eZk4NxY8b5ykw" value="0x4AAAAAAA0eZk4NxY8b5ykw">
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label>Action</label>
+      <input type="text" id="action" placeholder="login" value="login">
+    </div>
+    <div class="form-group">
+      <label>Wait Time (ms)</label>
+      <input type="number" id="waitTime" value="10000" min="1000" max="60000">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label>Timeout (ms)</label>
+      <input type="number" id="timeout" value="60000" min="10000" max="180000">
+    </div>
+    <div class="form-group">
+      <label>Custom User Agent (optional)</label>
+      <input type="text" id="userAgent" placeholder="Leave empty for random">
+    </div>
+  </div>
+
+  <div class="checkbox-group">
+    <label><input type="checkbox" id="takeScreenshot" checked> Take Screenshot</label>
+    <label><input type="checkbox" id="returnHtml" checked> Return HTML</label>
+    <label><input type="checkbox" id="returnCookies" checked> Return Cookies</label>
+    <label><input type="checkbox" id="solveTurnstile" checked> Solve Turnstile</label>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-primary" id="executeBtn">Execute Bypass</button>
+    <button class="btn btn-secondary" id="clearBtn">Clear Result</button>
+  </div>
+
+  <div id="resultBox" class="result-box">
+    <div id="statusBadge"></div>
+    <div id="resultContent"></div>
+  </div>
+
+  <div class="endpoint-info">
+    <strong style="color:#888;">API Endpoints:</strong><br>
+    <code>POST /api/bypass</code>
+    <button class="copy-btn" data-copy='{"url":"https://example.com","siteKey":"0x4AAAAAAA0eZk4NxY8b5ykw"}'>Copy JSON</button>
+    <span style="color:#666;margin-left:8px;">|</span>
+    <code>GET /api/test?url=...&siteKey=...</code>
+    <button class="copy-btn" data-copy="/api/test?url=https://example.com&siteKey=0x4AAAAAAA0eZk4NxY8b5ykw">Copy URL</button>
+  </div>
+
+  <div class="footer">
+    Powered by Puppeteer • 
+    <a href="#" id="healthLink">Health Check</a>
+  </div>
+</div>
+
+<script>
+  const targetUrl = document.getElementById('targetUrl')
+  const siteKey = document.getElementById('siteKey')
+  const action = document.getElementById('action')
+  const waitTime = document.getElementById('waitTime')
+  const timeout = document.getElementById('timeout')
+  const userAgent = document.getElementById('userAgent')
+  const takeScreenshot = document.getElementById('takeScreenshot')
+  const returnHtml = document.getElementById('returnHtml')
+  const returnCookies = document.getElementById('returnCookies')
+  const solveTurnstile = document.getElementById('solveTurnstile')
+  const executeBtn = document.getElementById('executeBtn')
+  const clearBtn = document.getElementById('clearBtn')
+  const resultBox = document.getElementById('resultBox')
+  const statusBadge = document.getElementById('statusBadge')
+  const resultContent = document.getElementById('resultContent')
+  const healthLink = document.getElementById('healthLink')
+
+  function setStatus(type, text) {
+    statusBadge.className = 'status-badge ' + type
+    statusBadge.textContent = text
+    resultBox.classList.add('active')
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div')
+    div.textContent = text
+    return div.innerHTML
+  }
+
+  function displayResult(data) {
+    let html = ''
+
+    html += '<div class="info-grid">'
+    html += '<span class="label">URL</span><span class="value">' + (data.url || 'N/A') + '</span>'
+    html += '<span class="label">Status</span><span class="value">' + (data.status || 'N/A') + '</span>'
+    html += '<span class="label">Title</span><span class="value">' + (data.title || 'N/A') + '</span>'
+    html += '<span class="label">Challenge Solved</span><span class="value">' + (data.challengeSolved ? 'Yes' : 'No') + '</span>'
+    html += '<span class="label">Turnstile Solved</span><span class="value">' + (data.turnstileSolved ? 'Yes' : 'No') + '</span>'
+    html += '<span class="label">Turnstile Token</span><span class="value">' + (data.turnstileToken || 'N/A') + '</span>'
+    html += '<span class="label">Execution Time</span><span class="value">' + (data.executionTime || 'N/A') + 'ms</span>'
+    html += '<span class="label">User Agent</span><span class="value">' + (data.userAgent || 'N/A') + '</span>'
+    
+    if (data.cookies && Object.keys(data.cookies).length) {
+      html += '<span class="label">Cookies</span><span class="value">' + JSON.stringify(data.cookies) + '</span>'
+    }
+    html += '</div>'
+
+    if (data.html) {
+      const preview = data.html.length > 5000 ? data.html.slice(0, 5000) + '... (truncated)' : data.html
+      html += '<div class="response-preview"><pre>' + escapeHtml(preview) + '</pre></div>'
+    }
+
+    if (data.screenshot) {
+      html += '<div style="margin-top:8px;"><img src="data:image/png;base64,' + data.screenshot + '"></div>'
+    }
+
+    if (data.error) {
+      html += '<div style="color:#ff6b6b;margin-top:8px;">Error: ' + escapeHtml(data.error) + '</div>'
+    }
+
+    resultContent.innerHTML = html
+  }
+
+  async function executeBypass() {
+    const url = targetUrl.value.trim()
+    const key = siteKey.value.trim()
+
+    if (!url) {
+      alert('Target URL is required')
+      return
+    }
+
+    if (!key) {
+      alert('Site Key is required')
+      return
+    }
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      alert('URL must start with http:// or https://')
+      return
+    }
+
+    executeBtn.disabled = true
+    executeBtn.innerHTML = '<span class="loading-spinner"></span> Processing...'
+    setStatus('pending', 'Bypassing Cloudflare Turnstile...')
+
+    try {
+      const payload = {
+        url: url,
+        siteKey: key,
+        action: action.value.trim() || 'login',
+        waitTime: parseInt(waitTime.value) || 10000,
+        timeout: parseInt(timeout.value) || 60000,
+        takeScreenshot: takeScreenshot.checked,
+        returnHtml: returnHtml.checked,
+        returnCookies: returnCookies.checked,
+        solveTurnstile: solveTurnstile.checked,
+        customUserAgent: userAgent.value.trim() || null
+      }
+
+      const response = await fetch('/api/bypass', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setStatus('success', 'Bypass Successful')
+      } else {
+        setStatus('failed', 'Bypass Failed')
+      }
+
+      displayResult(data)
+
+    } catch (error) {
+      setStatus('failed', 'Error')
+      resultContent.innerHTML = '<div style="color:#ff6b6b;">' + escapeHtml(error.message) + '</div>'
+    } finally {
+      executeBtn.disabled = false
+      executeBtn.innerHTML = 'Execute Bypass'
+    }
+  }
+
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const text = btn.dataset.copy
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent
+        btn.textContent = 'Copied!'
+        setTimeout(() => { btn.textContent = orig }, 1500)
+      }).catch(() => {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+        const orig = btn.textContent
+        btn.textContent = 'Copied!'
+        setTimeout(() => { btn.textContent = orig }, 1500)
+      })
+    })
+  })
+
+  clearBtn.addEventListener('click', () => {
+    resultBox.classList.remove('active')
+    resultContent.innerHTML = ''
+    statusBadge.textContent = ''
+  })
+
+  targetUrl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') executeBypass()
+  })
+
+  siteKey.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') executeBypass()
+  })
+
+  executeBtn.addEventListener('click', executeBypass)
+
+  healthLink.addEventListener('click', async (e) => {
+    e.preventDefault()
+    try {
+      const res = await fetch('/api/health')
+      const data = await res.json()
+      alert('Health Status:\n' + JSON.stringify(data, null, 2))
+    } catch (err) {
+      alert('Health check failed: ' + err.message)
+    }
+  })
+
+  const exampleUrls = [
+    'https://nftools.aroshi.my.id/nftoken',
+    'https://aibanana.net',
+    'https://generator-amprem.zone.id'
+  ]
+  let urlIndex = 0
+  setInterval(() => {
+    targetUrl.placeholder = 'Try: ' + exampleUrls[urlIndex % exampleUrls.length]
+    urlIndex++
+  }, 4000)
+</script>
+</body>
+</html>
